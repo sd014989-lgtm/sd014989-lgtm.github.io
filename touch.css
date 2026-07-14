@@ -1,0 +1,234 @@
+/* ============================================================
+   touch.css — iPad/touch adaptation layer (applied only when
+   <body> has class `ts-touch`, added by touch.js in the iPad build).
+   Never loaded by the desktop app. Sized for iPad Pro 12.9"
+   (1024×1366 portrait / 1366×1024 landscape).
+   ============================================================ */
+
+html { -webkit-text-size-adjust: 100%; }
+
+/* Remove the 350ms tap delay + double-tap-to-zoom interference everywhere
+   we handle taps ourselves (sentences, bar, window chrome). */
+body.ts-touch #reader,
+body.ts-touch .sentence,
+body.ts-touch #tsipad-bar,
+body.ts-touch .panel-head,
+body.ts-touch .np-controls { touch-action: manipulation; }
+
+/* Pop-out (⧉) opens a real OS window via window.open — impossible in an iPad
+   PWA. Hide those buttons so they don't dead-end. In-app floating windows stay. */
+body.ts-touch [data-popout] { display: none !important; }
+
+/* Long-press on a sentence should open the APP's context menu (via touch.js),
+   not iOS's native selection callout/magnifier. Disabling selection also stops
+   the tap/double-tap/long-press gestures from fighting a text selection. */
+body.ts-touch .sentence,
+body.ts-touch #reader .word {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Momentum scrolling + keep the reader clear of the bottom action bar. */
+body.ts-touch #reader-scroll { -webkit-overflow-scrolling: touch; }
+body.ts-touch:not(.no-book) #reader-scroll { padding-bottom: 132px; }
+
+/* Bigger, finger-friendly hit targets across the existing chrome. */
+body.ts-touch .tb-btn,
+body.ts-touch .np-ctl,
+body.ts-touch .fw-btn,
+body.ts-touch .panel-float,
+body.ts-touch .hl-tab,
+body.ts-touch .file-btn,
+body.ts-touch .link-btn,
+body.ts-touch .mode-tab {
+  min-height: 42px;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  font-size: 15px;
+}
+body.ts-touch .np-speed { min-height: 42px; font-size: 15px; }
+
+/* The Now Playing progress bar is a primary touch target now (drag-to-seek
+   via the touch→mouse shim) — make it fat enough for a finger. */
+body.ts-touch .progress { height: 22px; border-radius: 11px; }
+
+/* ---- window chrome: touch-sized drag / resize targets --------------------
+   panel.js adds 6 resize handles (n s e w se sw) + a [data-fresize] corner +
+   docked .resizer bars. All work by finger through the touch→mouse shim in
+   touch.js — these rules just make them big enough to actually hit. */
+body.ts-touch .fw-resize-n, body.ts-touch .fw-resize-s { height: 18px; }
+body.ts-touch .fw-resize-e, body.ts-touch .fw-resize-w { width: 18px; }
+body.ts-touch .fw-resize-se, body.ts-touch .fw-resize-sw { width: 34px; height: 34px; }
+body.ts-touch .resizer { width: 24px; }
+body.ts-touch .resizer-left { right: -12px; }
+body.ts-touch .resizer-right { left: -12px; }
+body.ts-touch .float-resize { width: 34px; height: 34px; }
+/* Window headers are drag handles — a little taller helps grabbing. */
+body.ts-touch .panel-head { min-height: 44px; }
+
+/* The PWA runs full-screen UNDER the iOS status bar (clock/battery). Pad the top
+   toolbar by the safe-area inset so its buttons clear the status bar, and let the
+   toolbar's own dark background fill the status-bar strip. Also inset the sides for
+   landscape rounded corners. */
+body.ts-touch { background: var(--chrome-bg, #1a1614); }
+body.ts-touch #toolbar {
+  padding-top: calc(6px + env(safe-area-inset-top, 0px));
+  padding-left: calc(10px + env(safe-area-inset-left, 0px));
+  padding-right: calc(10px + env(safe-area-inset-right, 0px));
+}
+
+/* Fullscreen hides the toolbar — keep the exit button (and via touch.js the
+   clamped windows) below the status bar instead of under the clock. */
+body.ts-touch #fs-exit {
+  top: calc(env(safe-area-inset-top, 0px) + 8px) !important;
+  right: calc(env(safe-area-inset-right, 0px) + 10px) !important;
+  opacity: .8;
+  min-height: 40px;
+  padding: 8px 14px;
+}
+
+/* Keep the ☁ Sync button clear of BOTH the toolbar and the bottom bar. */
+body.ts-touch #tsipad-fab {
+  top: auto !important;
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 126px) !important;
+  right: calc(env(safe-area-inset-right, 0px) + 14px) !important;
+}
+/* …but in the library the bottom bar is hidden — sit in the corner instead. */
+body.ts-touch.no-book #tsipad-fab {
+  bottom: calc(env(safe-area-inset-bottom, 0px) + 14px) !important;
+}
+
+/* ---------------- persistent bottom bar (2 rows) ---------------- */
+#tsipad-bar {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  z-index: 99997;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding:
+    6px
+    calc(12px + env(safe-area-inset-right, 0px))
+    calc(6px + env(safe-area-inset-bottom, 0px))
+    calc(12px + env(safe-area-inset-left, 0px));
+  background: rgba(28, 24, 21, 0.96);
+  border-top: 1px solid #3a332e;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+/* Only meaningful once a book is open. */
+body.ts-touch.no-book #tsipad-bar { display: none; }
+
+/* Row 1: scrubber */
+#tsbar-scrub {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  height: 34px;
+}
+#tsbar-scrub.empty { opacity: .35; }
+.tsbar-time {
+  flex: 0 0 auto;
+  min-width: 56px;
+  font: 600 13px/1 system-ui, sans-serif;
+  color: #cfc7bd;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+#tsbar-track {
+  position: relative;
+  flex: 1 1 auto;
+  height: 30px;              /* generous touch strip; visual bar is centered */
+  touch-action: none;        /* horizontal scrub owns the gesture */
+  cursor: pointer;
+}
+#tsbar-track::before {       /* the visible groove */
+  content: '';
+  position: absolute; left: 0; right: 0; top: 50%;
+  height: 8px; transform: translateY(-50%);
+  border-radius: 4px;
+  background: #3a332e;
+}
+#tsbar-fill {
+  position: absolute; left: 0; top: 50%;
+  height: 8px; transform: translateY(-50%);
+  border-radius: 4px;
+  background: #5b6cf0;
+  width: 0%;
+  pointer-events: none;
+}
+#tsbar-knob {
+  position: absolute; top: 50%;
+  width: 22px; height: 22px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: #eee;
+  box-shadow: 0 1px 5px rgba(0,0,0,.5);
+  pointer-events: none;
+}
+
+/* Row 2: icon + text buttons */
+#tsbar-btns {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+#tsbar-btns::-webkit-scrollbar { display: none; }
+#tsbar-btns button {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 50px;
+  padding: 0 11px;
+  border: none;
+  border-radius: 12px;
+  background: #2a241f;
+  color: #eee;
+  font: 600 14px/1 system-ui, sans-serif;
+  white-space: nowrap;
+}
+#tsbar-btns button .ico { font-size: 17px; line-height: 1; }
+#tsbar-btns button .lbl { font-size: 14px; }
+#tsbar-btns button:active { background: #3a332e; transform: translateY(1px); }
+#tsbar-btns button.primary { background: #5b6cf0; color: #fff; padding: 0 18px; }
+#tsbar-btns button.tbar-speed .ico { font-size: 15px; min-width: 34px; text-align: center; }
+#tsbar-btns .tbar-sep { flex: 0 0 auto; width: 1px; height: 30px; background: #3a332e; margin: 0 4px; }
+#tsbar-btns .grow { flex: 1 1 auto; min-width: 4px; }
+
+/* Label tiers so the row never scrolls on iPad Pro 12.9":
+   ≤1450px (both orientations) hides the least-used labels (Bookmark/Find/Undo);
+   ≤1100px (portrait) also hides the secondary ones (Contents/Highlights/Note/
+   Settings). Icons + tooltips remain; primary labels (Library/Menu/Play/Speed/
+   Highlight/Phrase) always show. */
+@media (max-width: 1450px) {
+  #tsbar-btns button .lbl.opt2 { display: none; }
+}
+@media (max-width: 1100px) {
+  #tsbar-btns button .lbl.opt { display: none; }
+  #tsbar-btns button { padding: 0 10px; }
+  #tsbar-btns { gap: 4px; }
+}
+
+/* ---------------- ✂ phrase-select mode ---------------- */
+/* Live paint while dragging across words. */
+body.ts-touch #reader .word.ts-psel {
+  background: rgba(91, 108, 240, .45);
+  border-radius: 3px;
+  box-shadow: 0 0 0 2px rgba(91, 108, 240, .22);
+}
+/* The ✂ button glows while the mode is armed. */
+#tsbar-btns button#tsbar-phrase.active { background: #5b6cf0; color: #fff; }
+/* Words are user-select:none for clean gestures; the app's phrase flow reads a
+   DOM selection, so re-enable selectability for the instant we build the Range. */
+body.ts-phrase-apply .sentence,
+body.ts-phrase-apply #reader .word {
+  -webkit-user-select: text !important;
+  user-select: text !important;
+}
+/* Subtle hint that the reader is in select mode, not scroll mode. */
+body.ts-phrase-mode #reader { cursor: crosshair; }

@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Transcript Studio — pop-out</title>
+<link rel="stylesheet" href="fonts/fonts.css" />
+<link rel="stylesheet" href="style.css" />
+<style>
+  /* The OS window IS the panel — full bleed, no floating chrome. */
+  html, body { height: 100%; margin: 0; overflow: hidden; }
+  body.popout { background: var(--chrome-bg); color: var(--chrome-fg); display: flex; }
+  .po-window { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+  .po-head { padding: 8px 12px; font: 600 12px system-ui, sans-serif; border-bottom: 1px solid var(--chrome-line); text-transform: uppercase; letter-spacing: .05em; opacity: .75; flex: 0 0 auto; }
+  .po-body { flex: 1 1 auto; min-height: 0; overflow: auto; }
+  /* Now Playing */
+  .po-np-body { padding: 16px 18px; background: var(--bg); color: var(--fg); }
+  .po-np-body .np-sentence { font-family: var(--read-font); font-size: var(--read-size); line-height: 1.45; }
+  .np-controls { padding: 10px 12px; }
+  /* Highlights / TOC lists */
+  .po-list { padding: 6px; font-family: system-ui, sans-serif; }
+  .po-empty { opacity: .5; text-align: center; padding: 24px 10px; font-size: 13px; white-space: pre-line; }
+  .po-toc-row { display: block; width: 100%; text-align: left; background: none; border: 0; color: inherit; padding: 7px 10px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+  .po-toc-row:hover { background: var(--chrome-hover); }
+  .po-toc-row.is-active { color: var(--accent); font-weight: 600; box-shadow: inset 2px 0 0 var(--accent); }
+  .po-toc-row .t { opacity: .55; font-size: 11px; margin-left: 8px; }
+</style>
+</head>
+<body class="popout">
+  <div class="po-window">
+    <div id="po-head" class="po-head">Pop-out</div>
+    <div id="po-root" class="po-body"></div>
+  </div>
+  <script src="popout.js"></script>
+</body>
+</html>

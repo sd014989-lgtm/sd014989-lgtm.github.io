@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="TS Reader" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="theme-color" content="#1a1614" />
+<link rel="manifest" href="/manifest.webmanifest" />
+<link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+<link rel="icon" type="image/png" href="/icons/icon-192.png" />
+<link rel="stylesheet" href="/touch.css" />
+<title>Transcript Studio</title>
+<link rel="stylesheet" href="fonts/fonts.css" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body class="theme-dark-warm" data-mode="study">
+
+<!-- ====================== TOOLBAR (VideoNote-style ribbon) ====================== -->
+<header id="toolbar">
+  <div class="tb-group tb-left">
+    <button id="btn-library" class="tb-btn" title="Back to your library">Library</button>
+    <span id="book-title" class="book-title">Transcript Studio</span>
+    <span id="dirty-dot" class="dirty-dot" title="Unsaved changes" hidden>●</span>
+    <span id="save-status" class="save-status" hidden></span>
+  </div>
+
+  <div class="tb-group tb-center">
+    <div class="mode-toggle" role="tablist">
+      <button id="mode-book" class="mode-tab" data-mode="book">Book</button>
+      <button id="mode-study" class="mode-tab is-active" data-mode="study">Study</button>
+    </div>
+  </div>
+
+  <div class="tb-group tb-right">
+    <button id="btn-toc" class="tb-btn" title="Show / hide the Contents window">Contents</button>
+    <button id="btn-highlights" class="tb-btn" title="Show / hide the Highlights window">Highlights</button>
+    <button id="btn-np" class="tb-btn" title="Show / hide the Now Playing window">Now Playing</button>
+    <span id="ribbon-pins"></span>
+    <button id="btn-reset-layout" class="tb-btn" title="Put the windows back to the default layout">Reset Layout</button>
+    <button id="btn-fullscreen" class="tb-btn" title="Fullscreen — hide everything but the windows (Esc exits)">⛶ Fullscreen</button>
+    <button id="btn-settings" class="tb-btn" title="All settings — appearance, playback, highlights, exports">⚙ Settings</button>
+  </div>
+</header>
+
+<!-- Settings panel (built from the schema in settings.js) -->
+<div id="settings-overlay">
+  <div id="settings-box">
+    <div id="settings-head">
+      <h2>⚙ Settings</h2>
+      <button id="settings-close" title="Close">×</button>
+    </div>
+    <div id="settings-body"><!-- sections injected by settings.js --></div>
+    <div id="settings-foot">
+      <span class="settings-hint">Changes save automatically and apply to every book.</span>
+      <button id="settings-reset" class="tb-btn">Reset all settings</button>
+    </div>
+  </div>
+</div>
+
+<button id="fs-exit" title="Exit fullscreen (Esc)">⛶ Exit Fullscreen (Esc)</button>
+
+<!-- ====================== MAIN LAYOUT ====================== -->
+<div id="layout">
+
+  <!-- LEFT: Table of contents -->
+  <aside id="toc-panel" class="side-panel" hidden>
+    <div class="panel-head">
+      <span class="fw-title">Contents</span>
+      <span class="fw-pins" data-pins="toc"></span>
+      <div class="panel-head-actions">
+        <button class="panel-float" data-popout="toc" title="Open as a separate OS window">⧉</button>
+        <button class="panel-float fw-btn" data-min="toc" title="Minimize to the taskbar">−</button>
+        <button class="panel-float fw-btn" data-max="toc" title="Maximize / restore">□</button>
+        <button class="panel-close fw-btn" data-close="toc" title="Close this window">×</button>
+      </div>
+    </div>
+    <input id="toc-search" class="panel-search" placeholder="Search chapters…" />
+    <nav id="toc-list" class="toc-list"></nav>
+    <div class="resizer resizer-left" data-resize="toc"></div>
+    <div class="float-resize" data-fresize="toc"></div>
+  </aside>
+
+  <!-- CENTER: Reading area (becomes a floating "Book" window in windowed mode) -->
+  <main id="reader-wrap">
+    <div class="panel-head reader-head" id="reader-head">
+      <span id="reader-win-title" class="fw-title">Book</span>
+      <span class="fw-pins" data-pins="book"></span>
+      <div class="panel-head-actions">
+        <button id="reader-type" class="panel-float" title="Reading controls — font, size, spacing">Aa</button>
+        <button id="reader-theme" class="panel-float" title="Reading theme — 24 research-backed palettes">Theme</button>
+        <button id="reader-focus" class="panel-float" title="Focus mode — fade sentences that aren't highlighted">Focus</button>
+        <button class="panel-float fw-btn" data-max="book" title="Maximize / restore">□</button>
+      </div>
+    </div>
+    <div id="reader-scroll">
+    <div id="reader" class="reading study-mode" tabindex="0"></div>
+
+    <!-- Empty-state / library picker -->
+    <div id="library" class="library">
+      <div class="library-card">
+        <div class="library-head">Your library</div>
+        <div id="book-list" class="book-list"></div>
+        <button id="manual-toggle" class="link-btn">Open files manually…</button>
+        <div class="library-actions" id="manual-actions" hidden>
+          <label class="file-btn">Open EPUB…<input id="open-epub" type="file" accept=".epub" hidden /></label>
+          <label class="file-btn">Open audio…<input id="open-audio" type="file" accept="audio/*" hidden /></label>
+          <label class="file-btn">Open transcript…<input id="open-transcript" type="file" accept=".json" hidden /></label>
+          <label class="file-btn">Load session…<input id="open-session" type="file" accept=".json" hidden /></label>
+        </div>
+      </div>
+    </div>
+    </div><!-- /#reader-scroll -->
+    <div class="float-resize" data-fresize="book"></div>
+  </main>
+
+  <!-- RIGHT: Highlights -->
+  <aside id="hl-panel" class="side-panel" hidden>
+    <div class="resizer resizer-right" data-resize="hl"></div>
+    <div class="panel-head">
+      <span class="fw-title">Highlights</span>
+      <span class="fw-pins" data-pins="hl"></span>
+      <div class="panel-head-actions">
+        <button class="panel-float" data-popout="hl" title="Open as a separate OS window">⧉</button>
+        <button class="panel-float fw-btn" data-min="hl" title="Minimize to the taskbar">−</button>
+        <button class="panel-float fw-btn" data-max="hl" title="Maximize / restore">□</button>
+        <button class="panel-close fw-btn" data-close="hl" title="Close this window">×</button>
+      </div>
+    </div>
+    <div class="hl-tabs">
+      <button class="hl-tab is-active" data-tab="order">By Order</button>
+      <button class="hl-tab" data-tab="category">By Category</button>
+    </div>
+    <div id="hl-body" class="hl-body"></div>
+    <div class="hl-controls">
+      <button id="hl-add-current" class="np-ctl" title="Highlight the sentence being read right now">Highlight Current</button>
+      <button id="hl-note-current" class="np-ctl" title="Highlight the current sentence and open its note">+ Note</button>
+      <button id="hl-cat-cycle" class="np-ctl quickcat-btn" title="Active highlight category — click to cycle">
+        <span class="dot note" id="quickcat-dot"></span><span id="quickcat-label">Note</span>
+      </button>
+      <button id="hl-export" class="np-ctl" title="Export highlights as Markdown">Export</button>
+    </div>
+    <div class="float-resize" data-fresize="hl"></div>
+  </aside>
+</div>
+
+<!-- Taskbar for minimized windows -->
+<div id="restore-area"></div>
+
+<!-- ====================== NOW PLAYING (floating player window) ====================== -->
+<aside id="now-playing" class="side-panel np-window floating" hidden>
+  <div class="panel-head">
+    <span class="fw-title">Now Playing</span>
+    <span class="fw-pins" data-pins="np"></span>
+    <div class="panel-head-actions">
+      <button id="np-popout" class="panel-float" title="Open as a separate OS window">⧉</button>
+      <button class="panel-float fw-btn" data-min="np" title="Minimize to the taskbar">−</button>
+      <button class="panel-float fw-btn" data-max="np" title="Maximize / restore">□</button>
+      <button class="panel-close fw-btn" data-close="np" title="Close this window">×</button>
+    </div>
+  </div>
+  <div class="np-body" id="np-body" title="Click to play / pause">
+    <div id="np-sentence" class="np-sentence">—</div>
+  </div>
+  <!-- VideoNote player row: ⏮ N · ▶ · N ⏭ · time · progress · −remaining · speed -->
+  <div class="np-controls">
+    <button id="np-back" class="np-ctl" title="Skip backward">⏮ 5</button>
+    <button id="play-btn" class="np-ctl np-play" title="Play (Space)">▶</button>
+    <button id="np-fwd" class="np-ctl" title="Skip forward">5 ⏭</button>
+    <span id="cur-time" class="time">0:00</span>
+    <div id="progress" class="progress">
+      <div id="progress-fill" class="progress-fill"></div>
+      <div id="progress-buffer" class="progress-buffer"></div>
+      <div id="chapter-marks" class="chapter-marks"></div>
+      <div id="highlight-marks" class="highlight-marks"></div>
+      <div id="bookmark-marks" class="bookmark-marks"></div>
+      <div id="progress-tip" class="progress-tip" hidden></div>
+    </div>
+    <span id="dur-time" class="time" title="Time remaining">-0:00</span>
+    <select id="speed-sel" class="np-speed" title="Playback speed">
+      <option value="0.5">0.5x</option>
+      <option value="0.75">0.75x</option>
+      <option value="1" selected>1x</option>
+      <option value="1.25">1.25x</option>
+      <option value="1.5">1.5x</option>
+      <option value="1.75">1.75x</option>
+      <option value="2">2x</option>
+    </select>
+    <span class="word-pill" id="word-pill" title="Current word" hidden>—</span>
+  </div>
+  <div class="float-resize" data-fresize="np"></div>
+</aside>
+
+<!-- ====================== POPUPS ====================== -->
+<div id="popover-root"></div>
+
+<audio id="audio" preload="metadata"></audio>
+
+<!-- Vendored libs (offline) -->
+<script src="/vendor/jszip/jszip.min.js"></script>
+<script src="/vendor/epubjs/epub.min.js"></script>
+
+<!-- App -->
+<script src="themes.js"></script>
+<script src="util.js"></script>
+<script src="highlights.js"></script>
+<script src="autosave.js"></script>
+<script src="panel.js"></script>
+<script src="settings.js"></script>
+<script src="audio.js"></script>
+<script src="popsync.js"></script>
+<script src="extras.js"></script>
+<script src="reader.js"></script>
+  <script src="touch.js"></script>
+  <script src="media.js"></script>
+  <script src="onedrive.js"></script>
+  <script src="ts-ipad.js"></script>
+</body>
+</html>
