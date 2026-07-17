@@ -232,3 +232,28 @@ body.ts-phrase-apply #reader .word {
 }
 /* Subtle hint that the reader is in select mode, not scroll mode. */
 body.ts-phrase-mode #reader { cursor: crosshair; }
+
+/* ---------------- popovers fit the iPad screen ----------------
+   The app's base .popover has no max-width, so wide content (esp. the Theme
+   popover's swatch grid) spilled off the right edge and got clipped. Cap every
+   popover to the viewport and scroll inside; make the theme swatches wrap
+   responsively so they're always fully visible and finger-sized. */
+body.ts-touch .popover {
+  max-width: calc(100vw - 24px) !important;
+  max-height: 82vh !important;
+  overflow: auto !important;
+  box-sizing: border-box;
+  -webkit-overflow-scrolling: touch;
+}
+body.ts-touch .popover .theme-pop {
+  width: min(560px, calc(100vw - 48px)) !important;
+  max-width: 100% !important;
+}
+body.ts-touch .popover .theme-swatches {
+  grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)) !important;
+}
+body.ts-touch .popover .swatch { height: 46px; }        /* a touch taller = easier to tap */
+/* readable, tappable rows in the list-style popovers */
+body.ts-touch .popover .menu-list button,
+body.ts-touch .popover .speed-list button { padding: 11px 12px; font-size: 15px; }
+body.ts-touch .popover .cat-btn { padding: 11px; }
