@@ -576,31 +576,41 @@
   }
   function closePanel() { scrim.style.display = 'none'; panel.style.display = 'none'; }
 
-  // The book list: the OneDrive library when connected, else whatever is on this device.
+  // The book list. When OneDrive is connected it's the cloud library; otherwise it
+  // falls back to your PC over Tailscale (the working default) — so OneDrive is truly
+  // optional. If neither is reachable, it shows what's already on this iPad.
   async function buildLibrary() {
     const list = panel && panel.querySelector('#tsipad-list');
     if (!list) return;
     list.innerHTML = '';
     const localById = {}; (await metaAll()).forEach(r => localById[r.id] = r);
-    if (!odOn()) {
-      const on = Object.values(localById);
-      if (!on.length) { list.appendChild(h('div', { class: 'sub', text: 'Connect OneDrive above to see and download your books.' })); return; }
-      list.appendChild(h('div', { class: 'sub', text: 'On this iPad (connect OneDrive to add more & keep in sync):' }));
-      on.forEach(r => list.appendChild(bookRow(bookCardShape(r), true, r)));
+    if (odOn()) {
+      setStatus('Loading your OneDrive library…');
+      let books = [];
+      try { books = await odListLibrary(); }
+      catch (e) { setStatus('Could not read OneDrive: ' + e.message, true); return; }
+      if (!books.length) {
+        list.appendChild(h('div', { class: 'sub', html: 'No books in OneDrive yet. Add one by making a folder in <b>OneDrive → Apps → TranscriptStudio</b> and dropping in its <b>.epub</b> + audio.' }));
+        setStatus('0 books in OneDrive.'); return;
+      }
+      books.forEach(b => list.appendChild(bookRow(b, !!localById[b.id], localById[b.id], 'onedrive')));
+      setStatus(books.length + ' book(s) in your OneDrive.');
       return;
     }
-    setStatus('Loading your OneDrive library…');
-    let books = [];
-    try { books = await odListLibrary(); }
-    catch (e) { setStatus('Could not read OneDrive: ' + e.message, true); return; }
-    if (!books.length) {
-      list.appendChild(h('div', { class: 'sub', html: 'No books yet. Add one by making a folder in <b>OneDrive → Apps → TranscriptStudio</b> and dropping in its <b>.epub</b> + audio file — it will appear here on every device.' }));
-      Object.values(localById).forEach(r => { if (!localById[r.id]._shown) list.appendChild(bookRow(bookCardShape(r), true, r)); });
-      setStatus('0 books in OneDrive.');
+    // OneDrive off → use the PC (Tailscale) as the source, exactly as before.
+    setStatus('Checking your PC…');
+    let remote = null;
+    try { remote = await fetchRemoteBooks(); } catch (e) {}
+    if (remote && remote.length) {
+      remote.forEach(b => list.appendChild(bookRow(b, !!localById[b.id], localById[b.id], 'pc')));
+      setStatus(remote.length + ' book(s) on your PC.');
       return;
     }
-    books.forEach(b => list.appendChild(bookRow(b, !!localById[b.id], localById[b.id])));
-    setStatus(books.length + ' book(s) in your OneDrive.');
+    const on = Object.values(localById);
+    if (!on.length) { list.appendChild(h('div', { class: 'sub', text: 'Your PC isn’t reachable and no books are on this iPad yet.' })); setStatus(''); return; }
+    list.appendChild(h('div', { class: 'sub', text: 'On this iPad (your PC isn’t reachable right now — your books still work offline):' }));
+    on.forEach(r => list.appendChild(bookRow(bookCardShape(r), true, r, 'local')));
+    setStatus('');
   }
   function bookCardShape(r) { return { id: r.id, name: r.name, title: r.title, author: r.author, audio: r.audio, hasTranscript: r.hasTranscript, hasCover: r.hasCover, hasSession: r.hasSession, highlights: r.highlights, percent: r.percent }; }
 
@@ -611,29 +621,32 @@
     return null;
   }
 
-  function bookRow(b, haveIt, rec) {
+  function bookRow(b, haveIt, rec, source) {
+    source = source || 'onedrive';
     const chips = h('div', { class: 'chips' });
     if (b.audio) chips.appendChild(h('span', { class: 'chip', text: 'audio' }));
     if (b.hasTranscript) chips.appendChild(h('span', { class: 'chip', text: 'sync' }));
     const hlN = (rec && rec.highlights) || 0;
     if (hlN) chips.appendChild(h('span', { class: 'chip', text: hlN + ' hl' }));
-    const downloadable = !!b.epub;                       // came from the OneDrive listing (has a real filename)
-    const btn = h('button', { class: 'act' + (haveIt ? ' have' : ''), text: haveIt ? '✓ On device' : 'Download' });
+    const canGet = !!b.epub && source !== 'local';
+    const verb = source === 'pc' ? 'Import' : 'Download';
+    const btn = h('button', { class: 'act' + (haveIt ? ' have' : ''), text: haveIt ? '✓ On device' : verb });
     const row = h('div', { class: 'row' }, [
       h('div', { class: 'meta' }, [h('div', { class: 't', text: b.title || b.name }), b.author ? h('div', { class: 'a', text: b.author }) : null, chips, haveIt ? syncLine(rec) : null]),
       btn,
     ]);
-    if (!downloadable) { btn.disabled = true; return row; }   // on-device-only shape while disconnected
+    if (!canGet) { btn.disabled = true; return row; }
+    const getter = source === 'pc' ? importBook : odDownloadBook;   // PC=Tailscale, else OneDrive
     btn.addEventListener('click', async () => {
       btn.disabled = true; const label0 = btn.textContent;
       try {
-        await odDownloadBook(b, (step) => { btn.textContent = step + '…'; setStatus('Downloading “' + (b.title || b.name) + '” — ' + step + '…'); });
+        await getter(b, (step) => { btn.textContent = step + '…'; setStatus((source === 'pc' ? 'Importing “' : 'Downloading “') + (b.title || b.name) + '” — ' + step + '…'); });
         btn.textContent = '✓ On device'; btn.classList.add('have');
-        setStatus('Downloaded “' + (b.title || b.name) + '”. Opening library…');
+        setStatus('Got “' + (b.title || b.name) + '”. Opening library…');
         if (window.loadLibrary) try { window.loadLibrary(); } catch (e) {}
       } catch (e) {
         btn.disabled = false; btn.textContent = label0;
-        setStatus('Download failed: ' + e.message, true);
+        setStatus((source === 'pc' ? 'Import' : 'Download') + ' failed: ' + e.message, true);
       }
     });
     return row;
@@ -646,17 +659,26 @@
     persistEl = h('div', { class: 'persist' });
     odHeadEl = h('div');
     panel = h('div', { id: 'tsipad-panel' }, [
-      h('h2', { text: '☁ OneDrive' }),
-      h('div', { class: 'sub', text: 'Your books, audio and highlights live in OneDrive and stay in sync across every device. Add a book by dropping its .epub + audio into your OneDrive folder — it appears here automatically.' }),
-      odHeadEl,
-      persistEl,
-      h('div', { id: 'tsipad-list', style: 'margin-top:4px' }),
-      statusEl,
-      h('div', { class: 'bar', style: 'margin-top:14px;border-top:1px solid #322b26;padding-top:12px' }, [
+      h('h2', { text: '☁ Sync' }),
+      h('div', { class: 'sub', text: 'Your highlights sync with your PC automatically. OneDrive (below) is optional — connect it any time to sync through the cloud so your PC can stay off.' }),
+      h('div', { class: 'bar', style: 'margin:2px 0 10px' }, [
+        h('button', { text: '⇅ Sync now', onclick: async () => {
+          if (odOn()) { setStatus('Syncing OneDrive…'); const r = await syncOneDrive('manual'); setStatus('OneDrive — ' + cnt(r, 'pushed') + ' up, ' + cnt(r, 'pulled') + ' down.' + (cnt(r, 'error') ? ' ' + cnt(r, 'error') + ' failed.' : ''), cnt(r, 'error') > 0); }
+          else { setStatus('Syncing with your PC…'); const r = await reconcileAll(t => setStatus('Syncing “' + t + '”…')); const f = cnt(r, 'push-failed') + cnt(r, 'error'); setStatus('PC — ' + cnt(r, 'pushed') + ' pushed, ' + cnt(r, 'pulled') + ' pulled, ' + cnt(r, 'in-sync') + ' in sync' + (f ? ', ' + f + ' failed (PC off?)' : '') + '.', f > 0); }
+          await buildLibrary(); await refreshFabBadge();
+          if (window.loadLibrary) try { window.loadLibrary(); } catch (e) {}
+        } }),
         h('button', { text: '↻ Refresh', onclick: () => buildLibrary() }),
-        h('button', { text: '⤓ Export highlights', title: 'Save a backup copy off this device (Files / Mail)', onclick: () => exportHighlights() }),
-        h('button', { text: 'Close', onclick: closePanel }),
+        h('button', { text: '⤓ Export', title: 'Save a backup copy off this device (Files / Mail)', onclick: () => exportHighlights() }),
       ]),
+      h('div', { id: 'tsipad-list', style: 'margin-top:2px' }),
+      statusEl,
+      persistEl,
+      h('div', { style: 'margin-top:14px;border-top:1px solid #322b26;padding-top:12px' }, [
+        h('div', { class: 'sub', style: 'margin-bottom:8px', text: '☁ OneDrive cloud sync (optional)' }),
+        odHeadEl,
+      ]),
+      h('div', { class: 'bar', style: 'margin-top:12px' }, [ h('button', { text: 'Close', onclick: closePanel }) ]),
     ]);
     document.body.appendChild(scrim);
     document.body.appendChild(panel);
